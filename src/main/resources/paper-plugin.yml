@@ -1,0 +1,6 @@
+name: netherlink
+version: "${version}"
+main: dev.eyf.netherlink.NetherLinkPlugin
+api-version: "26.3"
+author: eyf
+description: Minecraft x QQ 双向消息互通（NetherLink MC 端）
