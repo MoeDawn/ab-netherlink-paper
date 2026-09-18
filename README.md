@@ -1,91 +1,87 @@
 # NetherLink Paper 端
 
-Minecraft(Paper) 服务器侧的 NetherLink 插件，负责与 AstrBot 建立 WebSocket 长连接，
-实现服务器与 QQ 群的双向消息互通。
+Minecraft(Paper) 服务端插件，与 [AstrBot 侧的 NetherLink 插件](https://github.com/MoeDawn/astrbot_plugin_netherlink)建立 WebSocket 长连接，实现服务器与 QQ 群的双向消息互通。
 
-AstrBot 侧插件见：[astrbot_plugin_netherlink](https://github.com/MoeDawn/astrbot_plugin_netherlink)
-
-## 架构
-
-```
-QQ群 ←→ NapCat(snowluma) ←→ AstrBot插件(WS服务端) ←WebSocket/JSON行→ 本插件(WS客户端)
-```
-
-本插件是 **WS 客户端**，主动连入 AstrBot；AstrBot 换机器只需改本插件的 `config.yml`。
+**必须先装好 AstrBot 侧插件**，本插件才能工作（它是客户端，主动连入 AstrBot）。
 
 ## 功能
 
 | 方向 | 说明 |
 |---|---|
-| MC → QQ | 聊天/进服/退服/死亡上报；唤醒词开头的聊天作为 `bot_chat` 上报（交由 AstrBot 的 LLM 处理） |
-| 成就上报 | 玩家获得成就时上报 `advancement`（**已过滤配方解锁与根成就**，否则 AI 会被配方刷屏） |
-| QQ → MC | `chat` / `bot_reply` 下行整行文本，用 `LegacyComponentSerializer` 渲染 `§` 染色码后广播到公屏 |
-| 指令执行 | `command` 下行走 `dispatchCommand` 以控制台身份执行；Proxy 代理捕获 `sendMessage`，把**真实输出**回传给 AstrBot |
-
-## 通信协议（JSON 行，每行一个对象）
-
-**上行（MC → AstrBot）**
-
-```jsonc
-{"type": "hello", "token": "...", "server_name": "survival"}
-{"type": "chat",  "player": "Steve", "text": "大家好"}
-{"type": "join",  "player": "Steve"}
-{"type": "leave", "player": "Steve"}
-{"type": "death", "player": "Steve", "message": "Steve 掉出了世界"}
-{"type": "bot_chat", "player": "Steve", "text": "ai 你好"}   // 唤醒词开头，走 LLM
-{"type": "advancement", "player": "Steve",
- "advancement": "钻石！", "advancement_key": "story/mine_diamond"}
-   // 获得成就（已过滤配方解锁与根成就），AstrBot 侧交 AI 处理好感与回复
-{"type": "heartbeat"}
-{"type": "command_result", "id": "uuid", "ok": true, "output": "..."}
-```
-
-**下行（AstrBot → MC）**——`line` 均为 AstrBot 侧渲染完成的整行文本，可含 `§` 染色码：
-
-```jsonc
-{"type": "chat",      "line": "⌜§a水群§f⌟ <§b张三§f> §5你好§f"}
-{"type": "bot_reply", "line": "⌜§cai§f⌟ : §d你好呀§f"}
-{"type": "command",   "id": "uuid", "cmd": "gamemode creative Steve"}
-```
-
-## 可靠性
-
-- 断线**指数退避重连**（3s 起，上限 60s；连上后重置）
-- **15 秒心跳**，同时清理超过 15 秒未回执的指令登记
-- 心跳与重连均在异步线程执行，不阻塞服务器主线程
-
-## 构建
-
-**要求**：JDK 25 + Gradle 9.x（JDK 22 及以下编译不了 Paper 26.3 API）。
-
-```bash
-cd paper-plugin
-./build.cmd        # Windows
-```
-
-产物：`build/libs/netherlink-paper-0.0.1.jar`
-
-> 若路径含 `&` 等特殊字符，`./build.cmd` 可能解析失败，改用 `cmd //c ".\build.cmd"`。
-> 本机已验证环境：JDK 25 (`C:\jdk25\jdk-25.0.4.1+1`)、Gradle 9.1.0 (`C:\gradle\gradle-9.1.0`)。
-> Gradle 8.14 内置的 Kotlin 解析不了 JDK 25 的四段版本号，会崩。
+| 游戏 → QQ | 聊天/进服/退服/死亡推送到群；唤醒词开头的话作为对话交给 AI |
+| 成就上报 | 玩家获得成就时通知 AI（已过滤配方解锁与根成就） |
+| QQ → 游戏 | 群消息渲染 `§` 染色码后广播到公屏 |
+| 指令执行 | 以控制台身份执行 AI 下发的指令，并把服务器**真实输出**回传给 AI |
 
 ## 安装
 
-1. 把 jar 放入服务器 `plugins/`
-2. 首次启动会生成 `plugins/NetherLink/config.yml`，编辑：
+1. **下载 Release**
+   从 [Releases](https://github.com/MoeDawn/ab-netherlink-paper/releases) 下载 `netherlink-paper-0.0.1.jar`
 
-```yaml
-host: "AstrBot机器IP"
-port: 8765
-token: "与AstrBot侧一致"
-server-name: "mc"            # 只作标识；显示名由 AstrBot 侧的 mc_server_name 控制
-wake-prefixes: "ai,助手"   # 游戏内唤醒词，须与 AstrBot 侧 mc_wake_prefixes 一致
+2. **放入服务端**
+   把 jar 放进服务器的 `plugins/` 目录，重启服务器
+
+3. **填配置**
+   首次启动会生成 `plugins/NetherLink/config.yml`：
+
+   ```yaml
+   host: "AstrBot机器的IP"
+   port: 8765
+   token: "与 AstrBot 侧 auth_token 完全一致"
+   server-name: "mc"          # 本服务器的标识，仅用于握手
+   wake-prefixes: "ai,助手"    # 唤醒词，须与 AstrBot 侧 mc_wake_prefixes 一致
+   ```
+
+   > `token` 必须与 AstrBot 插件配置里的 `auth_token` 一模一样，握手时校验，不匹配会被断开。
+   > 服务器**显示名**不在这里控制——QQ 群前缀、`{server}` 占位符、AI 上下文里的服务器名统一由 AstrBot 侧 `mc_server_name` 决定。
+
+4. **重启服务器**使配置生效
+
+连接成功后，AstrBot 日志会显示握手成功，游戏内事件即开始推送到群。
+
+## 配置项
+
+| 配置项 | 说明 |
+|---|---|
+| `host` / `port` | AstrBot 侧监听的 WebSocket 地址与端口 |
+| `token` | 握手鉴权密钥，两侧必须一致 |
+| `server-name` | 本服务器的标识，握手时上报（不影响显示名） |
+| `wake-prefixes` | 游戏内唤醒词（逗号分隔），**须与 AstrBot 侧 `mc_wake_prefixes` 一致**否则唤不醒 AI |
+
+## 可靠性
+
+- 断线**自动重连**，指数退避（3 秒起，最多 60 秒）
+- **15 秒心跳**保活，同时清理超时未回执的指令
+- 重连与心跳都在异步线程执行，**不阻塞服务器主线程**
+
+## 环境要求
+
+- Minecraft 服务端 **Paper 26.3**（或兼容的 fork）
+- **Java 25**
+- 已装好并运行 [AstrBot 侧插件](https://github.com/MoeDawn/astrbot_plugin_netherlink)
+
+## 从源码构建（可选）
+
+需要 JDK 25 与 Gradle 9.x（低版本编译不了 Paper 26.3 API）：
+
+```bash
+cd paper-plugin
+./build.cmd          # Windows
 ```
 
-3. 重启服务器
+产物在 `build/libs/netherlink-paper-0.0.1.jar`。
 
-> `token` 必须与 AstrBot 插件配置里的 `auth_token` 完全相同，握手时校验，不匹配会被断开。
+> 若项目路径含 `&` 等特殊字符导致 `./build.cmd` 解析失败，改用 `cmd //c ".\build.cmd"`。
 
-## 许可
+## 目录结构
 
-见仓库根目录。
+```text
+paper-plugin/
+├── src/main/java/dev/eyf/netherlink/
+│   ├── NetherLinkPlugin.java    # 插件入口：事件监听、配置、指令执行
+│   └── AstrBotWsClient.java     # WebSocket 客户端：连接、重连、心跳
+├── src/main/resources/
+│   └── paper-plugin.yml         # 插件元数据
+├── build.gradle.kts
+└── README.md
+```
