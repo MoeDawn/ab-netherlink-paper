@@ -1,8 +1,6 @@
 package dev.eyf.netherlink;
 
 import java.io.File;
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Proxy;
 import java.nio.file.Files;
 import java.util.UUID;
 
@@ -242,7 +240,19 @@ public final class NetherLinkPlugin extends JavaPlugin implements Listener {
         // 控制台身份执行：权限等同 OP，切主线程
         Bukkit.getScheduler().runTask(this, () -> {
             StringBuilder output = new StringBuilder();
-            CommandSender console = capturingSender(Bukkit.getConsoleSender(), output);
+            // 必须用 Bukkit.createCommandSender 造发送器，**不能**自己用 Proxy 包控制台。
+            // Paper 的 VanillaCommandWrapper.getListener 只认 6 种具体类型
+            // （CraftEntity / BlockCommandSender / RemoteConsoleCommandSender /
+            //   ConsoleCommandSender / ProxiedCommandSender / FeedbackForwardingSender），
+            // 动态 Proxy 一个都不沾，于是任何原生指令（give/tp/list/time …）在解析之前
+            // 就直接抛 IllegalArgumentException: Cannot make ... a vanilla command listener。
+            // 该工厂返回的正是 FeedbackForwardingSender：权限等同控制台
+            // （isOp=true、hasPermission("*")=true），并且把两类反馈统一成 Component
+            // 送进这个 lambda —— 原生指令的反馈，以及 Bukkit 插件指令经
+            // sendMessage(String) 输出的文本（实测两者都能收到；真实控制台则一条都收不到）。
+            CommandSender console = Bukkit.createCommandSender(
+                    (net.kyori.adventure.text.Component component) ->
+                            output.append(PLAIN.serialize(component)).append('\n'));
             try {
                 boolean dispatched = Bukkit.dispatchCommand(console, cmd);
                 if (output.length() == 0) {
@@ -253,61 +263,6 @@ public final class NetherLinkPlugin extends JavaPlugin implements Listener {
                 sendCommandResult(id, "执行异常: " + e.getMessage());
             }
         });
-    }
-
-    /**
-     * 包装控制台发送器：拦截所有 sendMessage* 调用收集输出文本，
-     * 其余方法委托给真实控制台（保持 OP 权限、名称等语义）。
-     * 部分 Paper 指令用 MiniMessage/Adventure 输出，反射兜底处理 component 参数。
-     */
-    private CommandSender capturingSender(CommandSender delegate, StringBuilder sink) {
-        Class<?> iface;
-        try {
-            iface = Class.forName("io.papermc.paper.command.CommandSender");
-
-        } catch (ClassNotFoundException e) {
-            // 老 API 结构下退回 Bukkit CommandSender
-            iface = CommandSender.class;
-        }
-        final Class<?> senderIface = iface;
-        return (CommandSender) Proxy.newProxyInstance(
-                getClass().getClassLoader(),
-                new Class<?>[]{senderIface},
-                (proxy, method, args) -> {
-                    String name = method.getName();
-                    if (name.startsWith("sendMessage") || name.equals("sendRichMessage")
-                            || name.equals("sendPlainMessage")) {
-                        if (args != null) {
-                            for (Object arg : args) {
-                                sink.append(describe(arg)).append('\n');
-                            }
-                        }
-                        return null;
-                    }
-                    try {
-                        return method.invoke(delegate, args);
-                    } catch (InvocationTargetException ite) {
-                        throw ite.getCause() != null ? ite.getCause() : ite;
-                    }
-                });
-    }
-
-    /** 把输出参数转成可读文本：字符串直接用，Adventure Component 序列化，其余 toString。 */
-    private String describe(Object arg) {
-        if (arg instanceof String s) {
-            return s;
-        }
-        try {
-            // net.kyori.adventure.text.Component → 纯文本
-            Class<?> component = Class.forName("net.kyori.adventure.text.Component");
-            if (component.isInstance(arg)) {
-                return net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer
-                        .plainText().serialize((net.kyori.adventure.text.Component) arg);
-            }
-        } catch (ClassNotFoundException ignored) {
-            // 无 Adventure 环境，走 toString
-        }
-        return String.valueOf(arg);
     }
 
     private void sendCommandResult(String id, String output) {
