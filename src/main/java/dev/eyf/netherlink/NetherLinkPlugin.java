@@ -253,23 +253,30 @@ public final class NetherLinkPlugin extends JavaPlugin implements Listener {
             CommandSender console = Bukkit.createCommandSender(
                     (net.kyori.adventure.text.Component component) ->
                             output.append(PLAIN.serialize(component)).append('\n'));
+            boolean ok = false;
             try {
-                boolean dispatched = Bukkit.dispatchCommand(console, cmd);
+                ok = Bukkit.dispatchCommand(console, cmd);
                 if (output.length() == 0) {
-                    output.append(dispatched ? "（指令已执行，无返回输出）" : "指令执行失败（服务端返回 false）");
+                    output.append(ok
+                            ? "（指令已执行，无返回输出）"
+                            : "指令执行失败（服务器返回 false）");
                 }
-                sendCommandResult(id, output.toString());
+                sendCommandResult(id, ok, output.toString());
             } catch (Exception e) {
-                sendCommandResult(id, "执行异常: " + e.getMessage());
+                // 抛异常 = 明确失败。必须如实上报，否则 Python 侧会当成功照扣好感
+                sendCommandResult(id, false, "执行异常: " + e.getMessage());
             }
         });
     }
 
-    private void sendCommandResult(String id, String output) {
+    private void sendCommandResult(String id, boolean ok, String output) {
         JsonObject o = new JsonObject();
         o.addProperty("type", "command_result");
         o.addProperty("id", id);
-        o.addProperty("ok", true);
+        // ok 是 Python 侧判断「是否退费」的唯一依据：false = 这次执行明确失败，
+        // 必须退费。早先这里无条件写 true，而 Python 侧又只读 output 不读 ok，
+        // 两边一起把「执行异常」伪装成了成功——玩家白扣好感还被告知「指令已执行」。
+        o.addProperty("ok", ok);
         o.addProperty("output", output);
         Bukkit.getScheduler().runTaskAsynchronously(this, () -> wsClient.send(o.toString()));
     }
