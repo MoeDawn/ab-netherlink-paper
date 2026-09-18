@@ -28,6 +28,10 @@ tasks.processResources {
     filesMatching("paper-plugin.yml") {
         expand("version" to project.version)
     }
+    // MIT 要求「在软件的所有副本中包含许可声明」，故把本仓库根目录的 LICENSE
+    // 打进 jar。这是 Gradle 内置行为：默认从 src/main/resources 取资源，
+    // 这里额外把项目根目录（仓库根）的 LICENSE 也纳入。
+    from("LICENSE")
 }
 
 tasks.build {
