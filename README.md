@@ -78,7 +78,7 @@ cd paper-plugin
 host: "AstrBot机器IP"
 port: 8765
 token: "与AstrBot侧一致"
-server-name: "mc"
+server-name: "mc"            # 只作标识；显示名由 AstrBot 侧的 mc_server_name 控制
 wake-prefixes: "ai,助手"   # 游戏内唤醒词，须与 AstrBot 侧 mc_wake_prefixes 一致
 ```
 
