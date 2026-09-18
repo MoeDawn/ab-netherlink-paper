@@ -15,6 +15,7 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
+import org.bukkit.event.player.PlayerAdvancementDoneEvent;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import com.google.gson.Gson;
@@ -164,6 +165,36 @@ public final class NetherLinkPlugin extends JavaPlugin implements Listener {
                 : net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer
                         .plainText().serialize(event.deathMessage());
         o.addProperty("message", deathMessage);
+        report(o);
+    }
+
+    /**
+     * 玩家获得成就 → 上报给 AstrBot，由那边组装提示词交给 AI 处理好感与回复。
+     *
+     * 只上报「有展示信息的」成就：配方解锁（minecraft:recipes/*）与根成就
+     * （display 为 null）也会触发本事件，但那些不是玩家眼里的"获得成就"，
+     * 报上去会让 AI 频繁无意义地加好感。
+     */
+    @EventHandler(priority = EventPriority.MONITOR)
+    public void onAdvancement(PlayerAdvancementDoneEvent event) {
+        var advancement = event.getAdvancement();
+        var display = advancement.getDisplay();
+        if (display == null) {
+            return;  // 根成就：没有展示名，不是玩家感知的成就
+        }
+        String key = advancement.getKey().getKey();   // 如 "story/mine_diamond"
+        if (key.startsWith("recipes/")) {
+            return;  // 配方解锁，不算成就
+        }
+        net.kyori.adventure.text.Component titleComp = display.title();
+        String title = net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer
+                .plainText().serialize(titleComp);
+
+        JsonObject o = new JsonObject();
+        o.addProperty("type", "advancement");
+        o.addProperty("player", event.getPlayer().getName());
+        o.addProperty("advancement", title);
+        o.addProperty("advancement_key", key);
         report(o);
     }
 
