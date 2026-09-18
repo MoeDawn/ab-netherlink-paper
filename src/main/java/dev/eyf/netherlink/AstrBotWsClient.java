@@ -130,10 +130,23 @@ public final class AstrBotWsClient implements WebSocket.Listener {
     // WebSocket.Listener 回调（在 HttpClient 的线程上触发）
     // ------------------------------------------------------------------
     @Override
+    public void onOpen(WebSocket ws) {
+        // 建连后的第一次「拉取」。JDK 的默认实现就是 webSocket.request(1)，
+        // 显式写出来是为了让「接收是按需拉取」这个契约在代码里可见。
+        ws.request(1);
+    }
+
+    @Override
     public CompletionStage<?> onText(WebSocket ws, CharSequence data, boolean last) {
         String msg = data.toString();
         // 切回异步线程解析，避免阻塞 IO 线程
         Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> plugin.onWsMessage(msg));
+        // 必须补回这一次 request(1)：WebSocket 的接收是「按需拉取」的——
+        // 每次派发前预扣一次额度，回调里不再 request 就永久停止派发。
+        // JDK 的默认实现正是 webSocket.request(1); return null;，
+        // 覆写 onText 却不 request，等于读完第一条消息就把读侧关死：
+        // 表现为握手成功、首条下行能收到，之后永久静默且不报任何错。
+        ws.request(1);
         return null;
     }
 
