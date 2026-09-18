@@ -18,6 +18,7 @@ QQ群 ←→ NapCat(snowluma) ←→ AstrBot插件(WS服务端) ←WebSocket/JSO
 | 方向 | 说明 |
 |---|---|
 | MC → QQ | 聊天/进服/退服/死亡上报；唤醒词开头的聊天作为 `bot_chat` 上报（交由 AstrBot 的 LLM 处理） |
+| 成就上报 | 玩家获得成就时上报 `advancement`（**已过滤配方解锁与根成就**，否则 AI 会被配方刷屏） |
 | QQ → MC | `chat` / `bot_reply` 下行整行文本，用 `LegacyComponentSerializer` 渲染 `§` 染色码后广播到公屏 |
 | 指令执行 | `command` 下行走 `dispatchCommand` 以控制台身份执行；Proxy 代理捕获 `sendMessage`，把**真实输出**回传给 AstrBot |
 
@@ -32,6 +33,9 @@ QQ群 ←→ NapCat(snowluma) ←→ AstrBot插件(WS服务端) ←WebSocket/JSO
 {"type": "leave", "player": "Steve"}
 {"type": "death", "player": "Steve", "message": "Steve 掉出了世界"}
 {"type": "bot_chat", "player": "Steve", "text": "ai 你好"}   // 唤醒词开头，走 LLM
+{"type": "advancement", "player": "Steve",
+ "advancement": "钻石！", "advancement_key": "story/mine_diamond"}
+   // 获得成就（已过滤配方解锁与根成就），AstrBot 侧交 AI 处理好感与回复
 {"type": "heartbeat"}
 {"type": "command_result", "id": "uuid", "ok": true, "output": "..."}
 ```
@@ -59,7 +63,7 @@ cd paper-plugin
 ./build.cmd        # Windows
 ```
 
-产物：`build/libs/netherlink-paper-1.0.0.jar`
+产物：`build/libs/netherlink-paper-0.0.1.jar`
 
 > 若路径含 `&` 等特殊字符，`./build.cmd` 可能解析失败，改用 `cmd //c ".\build.cmd"`。
 > 本机已验证环境：JDK 25 (`C:\jdk25\jdk-25.0.4.1+1`)、Gradle 9.1.0 (`C:\gradle\gradle-9.1.0`)。
