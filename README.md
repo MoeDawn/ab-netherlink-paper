@@ -33,7 +33,7 @@ Minecraft(Paper) 服务端插件，与 [AstrBot 侧的 NetherLink 插件](https:
    ```
 
    > `token` 必须与 AstrBot 插件配置里的 `auth_token` 一模一样，握手时校验，不匹配会被断开。
-   > 服务器**显示名**不在这里控制——QQ 群前缀、`{server}` 占位符、AI 上下文里的服务器名统一由 AstrBot 侧 `mc_server_name` 决定。
+   > 服务器**显示名**不在这里控制——QQ 群前缀、`{server}` 占位符、AI 上下文里的服务器名统一由 AstrBot 侧的 `server_display_names` 决定（没配则显示 `MC`）。
 
 4. **重启服务器**使配置生效
 
