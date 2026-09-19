@@ -16,7 +16,7 @@ Minecraft(Paper) 服务端插件，与 [AstrBot 侧的 NetherLink 插件](https:
 ## 安装
 
 1. **下载 Release**
-   从 [Releases](https://github.com/MoeDawn/ab-netherlink-paper/releases) 下载 `netherlink-paper-0.0.1.jar`
+   从 [Releases](https://github.com/MoeDawn/ab-netherlink-paper/releases) 下载 `netherlink-paper-0.0.2.jar`
 
 2. **放入服务端**
    把 jar 放进服务器的 `plugins/` 目录，重启服务器
@@ -71,7 +71,7 @@ cd paper-plugin
 ./build.cmd          # Windows
 ```
 
-产物在 `build/libs/netherlink-paper-0.0.1.jar`。
+产物在 `build/libs/netherlink-paper-0.0.2.jar`。
 
 > 若项目路径含 `&` 等特殊字符导致 `./build.cmd` 解析失败，改用 `cmd //c ".\build.cmd"`。
 
