@@ -97,7 +97,8 @@ public final class NetherLinkPlugin extends JavaPlugin implements Listener {
                         token: "change-me"
                         # 本服务器的标识（握手时上报，供 AstrBot 区分服务器）
                         # 注意：显示名不在本端控制 —— QQ 群前缀、模板 {server}、
-                        # AI 上下文里的服务器名统一由 AstrBot 插件配置的 mc_server_name 决定
+                        # AI 上下文里的服务器名统一由 AstrBot 插件配置的
+                        # server_display_names 决定
                         server-name: "mc"
                         # 游戏内机器人唤醒词（逗号分隔，与 AstrBot 侧 mc_wake_prefixes 一致）
                         wake-prefixes: "ai,助手"
