@@ -28,12 +28,16 @@ Minecraft(Paper) 服务端插件，与 [AstrBot 侧的 NetherLink 插件](https:
    host: "AstrBot机器的IP"
    port: 8765
    token: "与 AstrBot 侧 auth_token 完全一致"
-   server-name: "mc"          # 本服务器的标识，仅用于握手
+   server-name: "survival"    # 本服务器的标识：AstrBot 侧用它区分不同服务器
    wake-prefixes: "ai,助手"    # 唤醒词，须与 AstrBot 侧 mc_wake_prefixes 一致
    ```
 
    > `token` 必须与 AstrBot 插件配置里的 `auth_token` 一模一样，握手时校验，不匹配会被断开。
-   > 服务器**显示名**不在这里控制——QQ 群前缀、`{server}` 占位符、AI 上下文里的服务器名统一由 AstrBot 侧的 `server_display_names` 决定（没配则显示 `MC`）。
+   >
+   > **`server-name` 是身份**：AstrBot 侧的 `ws_ports` 与 `server_display_names` 里写的
+   > `server-name` 指的就是它（若 `ws_ports` 只写了端口、没写名字，则直接采用这里上报的值）。
+   > 而**显示名不在这里控制**——QQ 群前缀、`{server}` 占位符、AI 上下文里的服务器名统一由
+   > AstrBot 侧的 `server_display_names` 决定（没配则显示 `MC`）。
 
 4. **重启服务器**使配置生效
 
@@ -45,7 +49,7 @@ Minecraft(Paper) 服务端插件，与 [AstrBot 侧的 NetherLink 插件](https:
 |---|---|
 | `host` / `port` | AstrBot 侧监听的 WebSocket 地址与端口 |
 | `token` | 握手鉴权密钥，两侧必须一致 |
-| `server-name` | 本服务器的标识，握手时上报（不影响显示名） |
+| `server-name` | 本服务器的**身份**，握手时上报。AstrBot 侧的 `ws_ports` / `server_display_names` 用它区分与命名各台服务器（不影响显示名） |
 | `wake-prefixes` | 游戏内唤醒词（逗号分隔），**须与 AstrBot 侧 `mc_wake_prefixes` 一致**否则唤不醒 AI |
 
 ## 可靠性
@@ -58,9 +62,19 @@ Minecraft(Paper) 服务端插件，与 [AstrBot 侧的 NetherLink 插件](https:
 
 ## 环境要求
 
-- Minecraft 服务端 **Paper 26.3**（或兼容的 fork）
+- Minecraft 服务端：**仅支持 Paper 26.3**（本插件按该版本的 API 编译，
+  且依赖一些 Paper 特有的接口；其他 MC 版本或其他核心未适配）
 - **Java 25**
 - 已装好并运行 [AstrBot 侧插件](https://github.com/MoeDawn/astrbot_plugin_netherlink)
+
+> ⚠️ **版本限定**：只支持 **Minecraft 26.3 的 Paper 端**。降级/升级到别的
+> MC 版本需要重新编译、并可能改动代码——本插件依赖两个 **Paper 特有**的接口：
+>
+> - `io.papermc.paper.event.player.AsyncChatEvent`（Paper 的异步聊天事件）
+> - `Bukkit.createCommandSender`（Paper 对 Bukkit 的扩展，用来捕获指令输出）
+>
+> 后者的实现类 `FeedbackForwardingSender` 在 paper-server 侧。
+> 换个核心（Spigot 等）或换个 MC 版本，这两处都得先改。
 
 ## 从源码构建（可选）
 
