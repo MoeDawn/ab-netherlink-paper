@@ -3,4 +3,4 @@ plugins {
     id("org.gradle.toolchains.foojay-resolver-convention") version "0.10.0"
 }
 
-rootProject.name = "netherlink-paper"
+rootProject.name = "netherlink-server"
