@@ -2,5 +2,8 @@ name: netherlink
 version: "${version}"
 main: dev.eyf.netherlink.NetherLinkPlugin
 api-version: "26.3"
+# 声明支持 Folia。⚠️ 光声明不够——代码必须用 Folia 的那套调度器
+# （Global/Region/Async/Entity），见开发文档「Supporting Paper and Folia」。
+folia-supported: true
 author: eyf
 description: Minecraft x QQ 双向消息互通（NetherLink MC 端）

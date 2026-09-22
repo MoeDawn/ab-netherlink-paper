@@ -1,6 +1,6 @@
-# NetherLink Paper 端
+# NetherLink MC 端
 
-Minecraft(Paper) 服务端插件，与 [AstrBot 侧的 NetherLink 插件](https://github.com/MoeDawn/astrbot_plugin_netherlink)建立 WebSocket 长连接，实现服务器与 QQ 群的双向消息互通。
+Minecraft 服务端插件（Paper / Purpur / Folia），与 [AstrBot 侧的 NetherLink 插件](https://github.com/MoeDawn/astrbot_plugin_netherlink)建立 WebSocket 长连接，实现服务器与 QQ 群的双向消息互通。
 
 **必须先装好 AstrBot 侧插件**，本插件才能工作（它是客户端，主动连入 AstrBot）。
 
@@ -62,19 +62,32 @@ Minecraft(Paper) 服务端插件，与 [AstrBot 侧的 NetherLink 插件](https:
 
 ## 环境要求
 
-- Minecraft 服务端：**仅支持 Paper 26.3**（本插件按该版本的 API 编译，
-  且依赖一些 Paper 特有的接口；其他 MC 版本或其他核心未适配）
+- Minecraft 服务端：**Paper 26.3 / Purpur 26.3 / Folia**（见下表）
 - **Java 25**
 - 已装好并运行 [AstrBot 侧插件](https://github.com/MoeDawn/astrbot_plugin_netherlink)
 
-> ⚠️ **版本限定**：只支持 **Minecraft 26.3 的 Paper 端**。降级/升级到别的
-> MC 版本需要重新编译、并可能改动代码——本插件依赖两个 **Paper 特有**的接口：
+> **支持的服务端核心（Minecraft 26.3）**
+
+| 核心 | 状态 | 说明 |
+|---|---|---|
+| **Paper** | ✅ 已验证 | 当前实机运行的就是它 |
+| **Purpur** | ✅ 可运行 | Paper 的分支，API 与事件完全一致 |
+| **Folia** | ⚠️ 已适配，未实机验证 | 调度器已全部换成 Paper/Folia 共用的那一套（`GlobalRegionScheduler` / `AsyncScheduler`），并声明了 `folia-supported: true`。⚠️ 但没有在真 Folia 上跑过 |
+| Spigot | ❌ 不支持 | 依赖 `Bukkit.createCommandSender`（用于捕获指令输出），这是 **Paper 专有扩展**——Spigot 26.3 的 Bukkit 里没有它 |
+| Fabric / NeoForge | ❌ 不支持 | 它们是模组加载器，不是 Bukkit 实现，得单独移植 |
+
+> ⚠️ **版本限定**：只支持 **Minecraft 26.3**。降级/升级到别的 MC 版本需要重新编译、
+> 并可能改动代码——本插件依赖两个 **Paper 专属**的接口：
 >
 > - `io.papermc.paper.event.player.AsyncChatEvent`（Paper 的异步聊天事件）
 > - `Bukkit.createCommandSender`（Paper 对 Bukkit 的扩展，用来捕获指令输出）
 >
 > 后者的实现类 `FeedbackForwardingSender` 在 paper-server 侧。
-> 换个核心（Spigot 等）或换个 MC 版本，这两处都得先改。
+> 换 MC 版本时这两处都得先确认。
+>
+> **Folia 说明**：`folia-supported: true` 只是声明，真正让它能跑的是「用对了调度器」。
+> 本插件已改用 `GlobalRegionScheduler`（主线程操作）与 `AsyncScheduler`（网络 / 心跳），
+> 这两个在普通 Paper 上行为一致，所以**同一份 jar 两种服务端都能用**。
 
 ## 从源码构建（可选）
 

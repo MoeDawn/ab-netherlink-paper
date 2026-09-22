@@ -7,6 +7,7 @@ import java.time.Duration;
 import java.util.Map;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
 
 import org.bukkit.Bukkit;
 
@@ -96,20 +97,20 @@ public final class AstrBotWsClient implements WebSocket.Listener {
         }
         long delay = retryDelay;
         retryDelay = Math.min(retryDelay * 2, 60);
-        Bukkit.getScheduler().runTaskLaterAsynchronously(plugin, this::attemptConnect, delay * 20L);
+        // 重连延迟：旧 API 的单位是 tick，新 API 是时间单位，故 秒 -> 毫秒。
+        // Folia 上传统调度器不可用；新 API 在普通 Paper 上行为一致（见类注释）。
+        Bukkit.getAsyncScheduler().runDelayed(
+                plugin, t -> attemptConnect(), delay * 50L, TimeUnit.MILLISECONDS);
     }
 
     /** 每 15 秒异步发送心跳。 */
     private void startHeartbeat() {
-        Bukkit.getScheduler().runTaskTimerAsynchronously(plugin, new Runnable() {
-            @Override
-            public void run() {
-                if (!shuttingDown && isConnected()) {
-                    send("{\"type\":\"heartbeat\"}");
-                    checkCommandTimeouts();
-                }
+        Bukkit.getAsyncScheduler().runAtFixedRate(plugin, t -> {
+            if (!shuttingDown && isConnected()) {
+                send("{\"type\":\"heartbeat\"}");
+                checkCommandTimeouts();
             }
-        }, 15 * 20L, 15 * 20L);
+        }, 15 * 50L, 15 * 50L, TimeUnit.MILLISECONDS);
     }
 
     /** 清理超过 15 秒未回执的指令（AstrBot 侧已超时兜底，这里仅释放内存）。 */
@@ -140,7 +141,7 @@ public final class AstrBotWsClient implements WebSocket.Listener {
     public CompletionStage<?> onText(WebSocket ws, CharSequence data, boolean last) {
         String msg = data.toString();
         // 切回异步线程解析，避免阻塞 IO 线程
-        Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> plugin.onWsMessage(msg));
+        Bukkit.getAsyncScheduler().runNow(plugin, t -> plugin.onWsMessage(msg));
         // 必须补回这一次 request(1)：WebSocket 的接收是「按需拉取」的——
         // 每次派发前预扣一次额度，回调里不再 request 就永久停止派发。
         // JDK 的默认实现正是 webSocket.request(1); return null;，

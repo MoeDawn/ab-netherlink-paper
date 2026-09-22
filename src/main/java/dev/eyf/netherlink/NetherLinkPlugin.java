@@ -117,7 +117,7 @@ public final class NetherLinkPlugin extends JavaPlugin implements Listener {
     // MC -> QQ 事件上报（异步线程执行网络发送）
     // ------------------------------------------------------------------
     private void report(JsonObject payload) {
-        Bukkit.getScheduler().runTaskAsynchronously(this, () -> wsClient.send(payload.toString()));
+        Bukkit.getAsyncScheduler().runNow(this, t -> wsClient.send(payload.toString()));
     }
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
@@ -230,7 +230,9 @@ public final class NetherLinkPlugin extends JavaPlugin implements Listener {
             return;
         }
         net.kyori.adventure.text.Component rendered = LEGACY.deserialize(line);
-        Bukkit.getScheduler().runTask(this, () -> Bukkit.broadcast(rendered));
+        // getServer().broadcast(...) 是 Server 接口上的 default 方法，Folia 可用
+        // （Bukkit.broadcast 这个静态门面则不一定）。
+        Bukkit.getGlobalRegionScheduler().execute(this, () -> getServer().broadcast(rendered));
     }
 
     private void handleCommandDown(JsonObject data) {
@@ -239,7 +241,7 @@ public final class NetherLinkPlugin extends JavaPlugin implements Listener {
         final String cmd = rawCmd.startsWith("/") ? rawCmd.substring(1) : rawCmd;
 
         // 控制台身份执行：权限等同 OP，切主线程
-        Bukkit.getScheduler().runTask(this, () -> {
+        Bukkit.getGlobalRegionScheduler().execute(this, () -> {
             StringBuilder output = new StringBuilder();
             // 必须用 Bukkit.createCommandSender 造发送器，**不能**自己用 Proxy 包控制台。
             // Paper 的 VanillaCommandWrapper.getListener 只认 6 种具体类型
@@ -279,6 +281,6 @@ public final class NetherLinkPlugin extends JavaPlugin implements Listener {
         // 两边一起把「执行异常」伪装成了成功——玩家白扣好感还被告知「指令已执行」。
         o.addProperty("ok", ok);
         o.addProperty("output", output);
-        Bukkit.getScheduler().runTaskAsynchronously(this, () -> wsClient.send(o.toString()));
+        Bukkit.getAsyncScheduler().runNow(this, t -> wsClient.send(o.toString()));
     }
 }
