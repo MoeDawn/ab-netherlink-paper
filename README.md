@@ -16,7 +16,7 @@ Minecraft 服务端插件（Paper / Purpur / Folia），与 [AstrBot 侧的 Neth
 ## 安装
 
 1. **下载 Release**
-   从 [Releases](https://github.com/MoeDawn/ab-netherlink-paper/releases) 下载 `netherlink-paper-0.0.2.jar`
+   从 [Releases](https://github.com/MoeDawn/netherlink-server/releases) 下载 `netherlink-paper-0.0.2.jar`
 
 2. **放入服务端**
    把 jar 放进服务器的 `plugins/` 目录，重启服务器
