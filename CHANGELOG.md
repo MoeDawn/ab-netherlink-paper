@@ -4,39 +4,36 @@
 
 ## v0.1.0
 
-与 AstrBot 侧插件版本号对齐（两侧分发渠道不同，版本号各自独立存储，本轮起取值一致）。
-
 ### 新增
 
 - **支持 Folia**：改用 Paper/Folia 共用的调度器（`GlobalRegionScheduler` /
   `AsyncScheduler`），并在 `paper-plugin.yml` 声明 `folia-supported: true`。
   官方文档明确这两套调度器在普通 Paper 上会被内部接管、行为一致，
   所以**同一份 jar 三种服务端通用**，无需分支判断。
-  - ⚠️ 延迟/周期的单位从 **tick** 变成**时间单位**，按 50ms/tick 换算。
 - **支持 Purpur**：它是 Paper 的分支，API 与事件完全一致。
 
 ### 修复
 
 - **多台服务器在线时执行指令会误报「超时」**：服务器端侧不受影响，但这是
-  指令链路里最关键的一环——详见 AstrBot 侧 v0.1.0 的说明。
+  指令链路里最关键的一环——详见 AstrBot 侧插件的说明。
 
 ### 变更
 
-- 项目名从 `netherlink-paper` 规范成 `netherlink-server`（仓库同名）。
-  本插件现在支持 Paper / Purpur / Folia，名字里的 paper 已不准确。
+- 产物名由 `netherlink-server-0.1.0.jar` 改为 **`netherlink-plugin-0.1.0.jar`**
+  （与仓库名一致）。
   ⚠️ 插件标识 `name: netherlink` **不变**，已装服的配置无需改动。
 
 ### 环境要求
 
 - Minecraft **26.3**，服务端为 **Paper / Purpur / Folia**
 - **Java 25**
-- 需要配套的 AstrBot 侧插件 `astrbot_plugin_netherlink` **0.1.0**
+- 已装好并运行 AstrBot 上的 NetherLink 插件
 
 ### 不支持
 
-- **Spigot**：缺少 `Bukkit.createCommandSender`（Paper 专有扩展，用于捕获指令输出），
-  这不是调度器层面能解决的。
-- **Fabric / NeoForge**：它们是模组加载器而非 Bukkit 实现，需要单独移植。
+- **Spigot**：缺少 Paper 专有的扩展接口（用于捕获指令输出），这不是调度器层面
+  能解决的。
+- **NeoForge**：尚未移植。**Fabric** 有单独的实现。
 
 ## v0.0.2
 

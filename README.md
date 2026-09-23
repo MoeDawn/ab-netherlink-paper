@@ -26,35 +26,23 @@ Minecraft 服务端插件（Paper / Purpur / Folia），与 [AstrBot 侧的 Neth
 - **Java 25**
 - 已装好并运行 [AstrBot 侧插件](https://github.com/MoeDawn/astrbot_plugin_netherlink)
 
-> **支持的服务端核心（Minecraft 26.3）**
-
 | 核心 | 状态 | 说明 |
 |---|---|---|
 | **Paper** | ✅ 已验证 | 当前实机运行的就是它 |
 | **Purpur** | ✅ 可运行 | Paper 的分支，API 与事件完全一致 |
-| **Folia** | ⚠️ 已适配，未实机验证 | 调度器已全部换成 Paper/Folia 共用的那一套（`GlobalRegionScheduler` / `AsyncScheduler`），并声明了 `folia-supported: true`。⚠️ 但没有在真 Folia 上跑过 |
-| Spigot | ❌ 不支持 | 依赖 `Bukkit.createCommandSender`（用于捕获指令输出），这是 **Paper 专有扩展**——Spigot 26.3 的 Bukkit 里没有它 |
-| Fabric / NeoForge | ❌ 不支持 | 它们是模组加载器，不是 Bukkit 实现，得单独移植（Fabric 有[单独的实现](https://github.com/MoeDawn/netherlink-fabric)）|
+| **Folia** | ⚠️ 已适配，未实机验证 | 已改用 Paper / Folia 共用的调度器，并声明 `folia-supported`。⚠️ 但没有在真 Folia 上跑过 |
+| Spigot | ❌ 不支持 | 缺少 Paper 专有的扩展接口（用于捕获指令输出） |
+| NeoForge | ❌ 不支持 | 尚未移植 |
+| Fabric | — | 见 [Fabric 版](https://github.com/MoeDawn/netherlink-fabric) |
 
-> ⚠️ **版本限定**：只支持 **Minecraft 26.3**。降级/升级到别的 MC 版本需要重新编译、
-> 并可能改动代码——本插件依赖两个 **Paper 专属**的接口：
->
-> - `io.papermc.paper.event.player.AsyncChatEvent`（Paper 的异步聊天事件）
-> - `Bukkit.createCommandSender`（Paper 对 Bukkit 的扩展，用来捕获指令输出）
->
-> 后者的实现类 `FeedbackForwardingSender` 在 paper-server 侧。
-> 换 MC 版本时这两处都得先确认。
->
-> **Folia 说明**：`folia-supported: true` 只是声明，真正让它能跑的是「用对了调度器」。
-> 本插件已改用 `GlobalRegionScheduler`（主线程操作）与 `AsyncScheduler`（网络 / 心跳），
-> 这两个在普通 Paper 上行为一致，所以**同一份 jar 两种服务端都能用**。
+> ⚠️ 只支持 **Minecraft 26.3**，其他 MC 版本暂未适配。
 
 ---
 
 ## 安装
 
 1. **下载 Release**
-   从 [Releases](https://github.com/MoeDawn/netherlink-plugin/releases) 下载 `netherlink-server-0.1.0.jar`
+   从 [Releases](https://github.com/MoeDawn/netherlink-plugin/releases) 下载 `netherlink-plugin-0.1.0.jar`
 
 2. **放入服务端**
    把 jar 放进服务器的 `plugins/` 目录，重启服务器
@@ -69,13 +57,6 @@ Minecraft 服务端插件（Paper / Purpur / Folia），与 [AstrBot 侧的 Neth
    server-name: "survival"    # 本服务器的标识：AstrBot 侧用它区分不同服务器
    wake-prefixes: "ai,助手"    # 唤醒词，须与 AstrBot 侧 mc_wake_prefixes 一致
    ```
-
-   > `token` 必须与 AstrBot 插件配置里的 `auth_token` 一模一样，握手时校验，不匹配会被断开。
-   >
-   > **`server-name` 是身份**：AstrBot 侧的 `ws_ports` 与 `server_display_names` 里写的
-   > `server-name` 指的就是它（若 `ws_ports` 只写了端口、没写名字，则直接采用这里上报的值）。
-   > 而**显示名不在这里控制**——QQ 群前缀、`{server}` 占位符、AI 上下文里的服务器名统一由
-   > AstrBot 侧的 `server_display_names` 决定（没配则显示 `MC`）。
 
 4. **重启服务器**使配置生效
 
@@ -92,6 +73,9 @@ Minecraft 服务端插件（Paper / Purpur / Folia），与 [AstrBot 侧的 Neth
 | `server-name` | 本服务器的**身份**，握手时上报。AstrBot 侧的 `ws_ports` / `server_display_names` 用它区分与命名各台服务器（不影响显示名） |
 | `wake-prefixes` | 游戏内唤醒词（逗号分隔），**须与 AstrBot 侧 `mc_wake_prefixes` 一致**否则唤不醒 AI |
 
+> `server-name` 是身份，**显示名不在这里控制**——QQ 群前缀、`{server}` 占位符、
+> AI 上下文里的服务器名统一由 AstrBot 侧的 `server_display_names` 决定（没配则显示 `MC`）。
+
 **键名与默认值与 Fabric 端的 `config/netherlink.json` 逐字对齐**——换端时配置可以直接照搬。
 
 ---
@@ -100,8 +84,6 @@ Minecraft 服务端插件（Paper / Purpur / Folia），与 [AstrBot 侧的 Neth
 
 - 断线**自动重连**，指数退避（3 秒起，最多 60 秒）
 - **15 秒心跳**保活，同时清理超时未回执的指令
-- **持续接收**：WebSocket 的接收是按需拉取的，每收到一条消息立刻补下一次请求，
-  长连接不会自行停止接收
 - 重连与心跳都在异步线程执行，**不阻塞服务器主线程**
 
 ---
@@ -110,44 +92,23 @@ Minecraft 服务端插件（Paper / Purpur / Folia），与 [AstrBot 侧的 Neth
 
 | 功能 | 状态 |
 |---|---|
-| WebSocket 连接 / 握手 / 指数退避重连 / 心跳 | ✅ 已实现，**实机验证过** |
-| 指令执行 + **输出捕获** + `ok` 语义 | ✅ 已实现，**实机验证过** |
-| 聊天上报（含唤醒词分流 `bot_chat`） | ✅ 已实现，**实机验证过** |
-| 进服 / 退服上报 | ✅ 已实现，**实机验证过** |
-| 死亡上报 | ✅ 已实现，**实机验证过** |
-| 成就上报 | ✅ 已实现，**实机验证过** |
+| WebSocket 连接 / 握手 / 重连 / 心跳 | ✅ 已验证 |
+| 指令执行 + 输出捕获 | ✅ 已验证 |
+| 聊天 / 进服 / 退服 / 死亡上报 | ✅ 已验证 |
+| 成就上报 | ✅ 已验证 |
 
 ---
 
 ## 从源码构建
 
-需要 JDK 25 与 Gradle 9.x（低版本编译不了 Paper 26.3 API）：
+需要 **JDK 25** 与 **Gradle 9.x**。
 
 ```bash
 cd netherlink-plugin
 ./build.cmd          # Windows
 ```
 
-产物在 `build/libs/netherlink-server-0.1.0.jar`。
-
-> 若项目路径含 `&` 等特殊字符导致 `./build.cmd` 解析失败，改用 `cmd //c ".\build.cmd"`。
-
----
-
-## 目录结构
-
-```text
-netherlink-plugin/
-├── src/main/java/dev/eyf/netherlink/
-│   ├── NetherLinkPlugin.java    # 插件入口：事件监听、配置、指令执行
-│   └── AstrBotWsClient.java     # WebSocket 客户端：连接、重连、心跳
-├── src/main/resources/
-│   └── paper-plugin.yml         # 插件元数据
-├── build.gradle.kts
-├── build.cmd
-├── CHANGELOG.md
-└── README.md
-```
+产物：`build/libs/netherlink-plugin-0.1.0.jar`
 
 ---
 
