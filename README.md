@@ -94,7 +94,7 @@ Minecraft 服务端插件（Paper / Purpur / Folia），与 [AstrBot 侧的 Neth
 需要 JDK 25 与 Gradle 9.x（低版本编译不了 Paper 26.3 API）：
 
 ```bash
-cd paper-plugin
+cd netherlink-plugin
 ./build.cmd          # Windows
 ```
 
@@ -105,7 +105,7 @@ cd paper-plugin
 ## 目录结构
 
 ```text
-paper-plugin/
+netherlink-plugin/
 ├── src/main/java/dev/eyf/netherlink/
 │   ├── NetherLinkPlugin.java    # 插件入口：事件监听、配置、指令执行
 │   └── AstrBotWsClient.java     # WebSocket 客户端：连接、重连、心跳
