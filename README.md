@@ -1,17 +1,55 @@
-# NetherLink MC 端
+# NetherLink MC 端 · Paper / Purpur / Folia 版
 
 Minecraft 服务端插件（Paper / Purpur / Folia），与 [AstrBot 侧的 NetherLink 插件](https://github.com/MoeDawn/astrbot_plugin_netherlink)建立 WebSocket 长连接，实现服务器与 QQ 群的双向消息互通。
 
 **必须先装好 AstrBot 侧插件**，本插件才能工作（它是客户端，主动连入 AstrBot）。
 
+> 📌 另有 [Fabric 版](https://github.com/MoeDawn/netherlink-fabric)。
+> 两个版本**协议完全相同**，接同一个 AstrBot 插件，服务端不用改配置。
+
+---
+
 ## 功能
 
 | 方向 | 说明 |
 |---|---|
-| 游戏 → QQ | 聊天/进服/退服/死亡推送到群；唤醒词开头的话作为对话交给 AI |
+| 游戏 → QQ | 聊天 / 进服 / 退服 / 死亡推送到群；唤醒词开头的话作为对话交给 AI |
 | 成就上报 | 玩家获得成就时通知 AI（已过滤配方解锁与根成就） |
-| QQ → 游戏 | 群消息渲染 `§` 染色码后广播到公屏 |
+| QQ → 游戏 | 群消息渲染 § 染色码后广播到公屏 |
 | 指令执行 | 以控制台身份执行 AI 下发的指令，并把服务器**真实输出**回传给 AI |
+
+---
+
+## 环境要求
+
+- Minecraft 服务端：**Paper 26.3 / Purpur 26.3 / Folia**
+- **Java 25**
+- 已装好并运行 [AstrBot 侧插件](https://github.com/MoeDawn/astrbot_plugin_netherlink)
+
+> **支持的服务端核心（Minecraft 26.3）**
+
+| 核心 | 状态 | 说明 |
+|---|---|---|
+| **Paper** | ✅ 已验证 | 当前实机运行的就是它 |
+| **Purpur** | ✅ 可运行 | Paper 的分支，API 与事件完全一致 |
+| **Folia** | ⚠️ 已适配，未实机验证 | 调度器已全部换成 Paper/Folia 共用的那一套（`GlobalRegionScheduler` / `AsyncScheduler`），并声明了 `folia-supported: true`。⚠️ 但没有在真 Folia 上跑过 |
+| Spigot | ❌ 不支持 | 依赖 `Bukkit.createCommandSender`（用于捕获指令输出），这是 **Paper 专有扩展**——Spigot 26.3 的 Bukkit 里没有它 |
+| Fabric / NeoForge | ❌ 不支持 | 它们是模组加载器，不是 Bukkit 实现，得单独移植（Fabric 有[单独的实现](https://github.com/MoeDawn/netherlink-fabric)）|
+
+> ⚠️ **版本限定**：只支持 **Minecraft 26.3**。降级/升级到别的 MC 版本需要重新编译、
+> 并可能改动代码——本插件依赖两个 **Paper 专属**的接口：
+>
+> - `io.papermc.paper.event.player.AsyncChatEvent`（Paper 的异步聊天事件）
+> - `Bukkit.createCommandSender`（Paper 对 Bukkit 的扩展，用来捕获指令输出）
+>
+> 后者的实现类 `FeedbackForwardingSender` 在 paper-server 侧。
+> 换 MC 版本时这两处都得先确认。
+>
+> **Folia 说明**：`folia-supported: true` 只是声明，真正让它能跑的是「用对了调度器」。
+> 本插件已改用 `GlobalRegionScheduler`（主线程操作）与 `AsyncScheduler`（网络 / 心跳），
+> 这两个在普通 Paper 上行为一致，所以**同一份 jar 两种服务端都能用**。
+
+---
 
 ## 安装
 
@@ -43,6 +81,8 @@ Minecraft 服务端插件（Paper / Purpur / Folia），与 [AstrBot 侧的 Neth
 
 连接成功后，AstrBot 日志会显示握手成功，游戏内事件即开始推送到群。
 
+---
+
 ## 配置项
 
 | 配置项 | 说明 |
@@ -52,6 +92,10 @@ Minecraft 服务端插件（Paper / Purpur / Folia），与 [AstrBot 侧的 Neth
 | `server-name` | 本服务器的**身份**，握手时上报。AstrBot 侧的 `ws_ports` / `server_display_names` 用它区分与命名各台服务器（不影响显示名） |
 | `wake-prefixes` | 游戏内唤醒词（逗号分隔），**须与 AstrBot 侧 `mc_wake_prefixes` 一致**否则唤不醒 AI |
 
+**键名与默认值与 Fabric 端的 `config/netherlink.json` 逐字对齐**——换端时配置可以直接照搬。
+
+---
+
 ## 可靠性
 
 - 断线**自动重连**，指数退避（3 秒起，最多 60 秒）
@@ -60,36 +104,22 @@ Minecraft 服务端插件（Paper / Purpur / Folia），与 [AstrBot 侧的 Neth
   长连接不会自行停止接收
 - 重连与心跳都在异步线程执行，**不阻塞服务器主线程**
 
-## 环境要求
+---
 
-- Minecraft 服务端：**Paper 26.3 / Purpur 26.3 / Folia**（见下表）
-- **Java 25**
-- 已装好并运行 [AstrBot 侧插件](https://github.com/MoeDawn/astrbot_plugin_netherlink)
+## 状态
 
-> **支持的服务端核心（Minecraft 26.3）**
+| 功能 | 状态 |
+|---|---|
+| WebSocket 连接 / 握手 / 指数退避重连 / 心跳 | ✅ 已实现，**实机验证过** |
+| 指令执行 + **输出捕获** + `ok` 语义 | ✅ 已实现，**实机验证过** |
+| 聊天上报（含唤醒词分流 `bot_chat`） | ✅ 已实现，**实机验证过** |
+| 进服 / 退服上报 | ✅ 已实现，**实机验证过** |
+| 死亡上报 | ✅ 已实现，**实机验证过** |
+| 成就上报 | ✅ 已实现，**实机验证过** |
 
-| 核心 | 状态 | 说明 |
-|---|---|---|
-| **Paper** | ✅ 已验证 | 当前实机运行的就是它 |
-| **Purpur** | ✅ 可运行 | Paper 的分支，API 与事件完全一致 |
-| **Folia** | ⚠️ 已适配，未实机验证 | 调度器已全部换成 Paper/Folia 共用的那一套（`GlobalRegionScheduler` / `AsyncScheduler`），并声明了 `folia-supported: true`。⚠️ 但没有在真 Folia 上跑过 |
-| Spigot | ❌ 不支持 | 依赖 `Bukkit.createCommandSender`（用于捕获指令输出），这是 **Paper 专有扩展**——Spigot 26.3 的 Bukkit 里没有它 |
-| Fabric / NeoForge | ❌ 不支持 | 它们是模组加载器，不是 Bukkit 实现，得单独移植 |
+---
 
-> ⚠️ **版本限定**：只支持 **Minecraft 26.3**。降级/升级到别的 MC 版本需要重新编译、
-> 并可能改动代码——本插件依赖两个 **Paper 专属**的接口：
->
-> - `io.papermc.paper.event.player.AsyncChatEvent`（Paper 的异步聊天事件）
-> - `Bukkit.createCommandSender`（Paper 对 Bukkit 的扩展，用来捕获指令输出）
->
-> 后者的实现类 `FeedbackForwardingSender` 在 paper-server 侧。
-> 换 MC 版本时这两处都得先确认。
->
-> **Folia 说明**：`folia-supported: true` 只是声明，真正让它能跑的是「用对了调度器」。
-> 本插件已改用 `GlobalRegionScheduler`（主线程操作）与 `AsyncScheduler`（网络 / 心跳），
-> 这两个在普通 Paper 上行为一致，所以**同一份 jar 两种服务端都能用**。
-
-## 从源码构建（可选）
+## 从源码构建
 
 需要 JDK 25 与 Gradle 9.x（低版本编译不了 Paper 26.3 API）：
 
@@ -102,6 +132,8 @@ cd netherlink-plugin
 
 > 若项目路径含 `&` 等特殊字符导致 `./build.cmd` 解析失败，改用 `cmd //c ".\build.cmd"`。
 
+---
+
 ## 目录结构
 
 ```text
@@ -112,5 +144,13 @@ netherlink-plugin/
 ├── src/main/resources/
 │   └── paper-plugin.yml         # 插件元数据
 ├── build.gradle.kts
+├── build.cmd
+├── CHANGELOG.md
 └── README.md
 ```
+
+---
+
+## 许可
+
+[MIT License](LICENSE)
